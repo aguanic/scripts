@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# (C) Andy 2012
+#
+# Accepts min_width and min_height as CLI options
+# Reads file names from STDIN and greps out of stream files 
+# whose width OR height are less than those specified in options
+#
+# Uses "identify" tool from imagemagick package
+# 
+#
+
+while getopts "advw:h:" opt; do
+  case $opt in
+  	a)
+	  ALL=1
+	  ;;
+    d)
+      DEBUG=1
+      ;;
+    v) 
+	  NEG=1
+	  ;;
+    w)
+	  MINW=$OPTARG
+	  ;;
+    h)
+	  MINH=$OPTARG
+	  ;;
+    \?)
+      echo "Usage: $0 [-adv] [-w min_width] [-h min_height]" >&2
+      echo "-a: list all items from input, prepend + for positive result and - for negative"
+      echo "-d: include image size in output"
+      echo "-v: invert output"
+      exit 1;
+      ;;
+  esac
+done
+
+while read i; do
+	imgsize=`identify -format "%[fx:w] %[fx:h]" "$i" 2>/dev/null`
+	RETVAL=$?
+
+	if [ $RETVAL -eq 0 ]; then	# file is an image!
+		ary=($imgsize)
+
+		if [[ $MINW -le ${ary[0]} ]] && [[ $MINH -le ${ary[1]} ]]; then 
+			SUFFICE=1
+			PREFIX="+"
+		else
+			SUFFICE=0
+			PREFIX="-"
+		fi 
+		
+		if [[ $ALL  -eq 1 ]]; then 
+			test $DEBUG || echo "$PREFIX $i"
+			test $DEBUG && echo "$PREFIX [${ary[0]}x${ary[1]}] $i"
+		else
+			if [[ $NEG -eq 0 ]]; then
+					if [[ $SUFFICE -eq 1 ]]; then
+						test $DEBUG || echo "$i"
+						test $DEBUG && echo "[${ary[0]}x${ary[1]}] $i" 
+					fi
+			else
+					if [[ $SUFFICE -eq 0 ]]; then
+						test $DEBUG || echo "$i"
+						test $DEBUG && echo "[${ary[0]}x${ary[1]}] $i" 
+					fi
+			fi
+
+		fi
+
+	fi
+done
+
+exit 0
